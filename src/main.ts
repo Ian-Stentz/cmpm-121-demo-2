@@ -15,6 +15,8 @@ const ctx = canvas.getContext("2d");
 canvas.width = 256;
 canvas.height = 256;
 
+//if(ctx) to avoid a style error since ctx can be null type
+//code is necessary to hide dropdown shadow showing through
 if(ctx) {
     ctx.fillStyle = "white";
     ctx.fillRect(0,0,256,256);
