@@ -7,6 +7,7 @@ interface Point {
 
 let penDown = false;
 let displayList : Point[][] = [];
+let redoStack : Point[][] = [];
 
 const APP_NAME = "Ian's Sticker Sketchpad";
 const app = document.querySelector<HTMLDivElement>("#app")!;
@@ -103,14 +104,42 @@ canvas.addEventListener("mouseup", (e) => {
 
 function resetDisplayInfo() {
     displayList = [];
+    redoStack = [];
+}
+
+function undo() {
+    let newestStroke = displayList.pop();
+    if(newestStroke) {
+        redoStack.push(newestStroke);
+    }
+    canvas.dispatchEvent(drawingChanged);
+}
+
+function redo() {
+    let redo = redoStack.pop();
+    if(redo) {
+        displayList.push(redo);
+    }
+    canvas.dispatchEvent(drawingChanged);
 }
 
 app.append(document.createElement("br"));
 
 const clearButton = document.createElement("button");
-clearButton.innerHTML = "Clear"
+clearButton.innerHTML = "Clear";
 
-clearButton.addEventListener("click", resetCanvas)
+clearButton.addEventListener("click", resetCanvas);
 clearButton.addEventListener("click", resetDisplayInfo);
 
+const undoButton = document.createElement("button");
+undoButton.innerHTML = "Undo";
+
+const redoButton = document.createElement("button");
+redoButton.innerHTML = "Redo";
+
+undoButton.addEventListener("click", undo);
+redoButton.addEventListener("click", redo);
+
 app.append(clearButton);
+app.append(undoButton);
+app.append(redoButton);
