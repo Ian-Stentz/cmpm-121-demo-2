@@ -1,8 +1,12 @@
 import "./style.css";
 
+interface Point {
+    x : number;
+    y : number;
+}
+
 let penDown = false;
-let mouseX = 0;
-let mouseY = 0;
+let displayList : Point[][] = [];
 
 const APP_NAME = "Ian's Sticker Sketchpad";
 const app = document.querySelector<HTMLDivElement>("#app")!;
@@ -19,6 +23,8 @@ const ctx = canvas.getContext("2d");
 canvas.width = 256;
 canvas.height = 256;
 
+const drawingChanged = new Event("drawing-changed");
+
 function resetCanvas() {
     //if(ctx) to avoid a style error since ctx can be null type
     if(ctx) {
@@ -32,7 +38,15 @@ function resetCanvas() {
 resetCanvas();
 app.append(canvas);
 
-function drawLine(context, x1, y1, x2, y2) {
+function addDisplayListPoint(x : number, y : number) {
+    let l = displayList.length;
+    if(l > 0) {
+        let thisPoint : Point = {x,y};
+        displayList[l-1].push(thisPoint);
+    }
+}
+
+function drawLine(context : CanvasRenderingContext2D, x1 : number, y1 : number, x2 : number, y2 : number) {
     if(context) {
         context.beginPath();
         context.strokeStyle = "black";
@@ -44,26 +58,52 @@ function drawLine(context, x1, y1, x2, y2) {
     }
 }
 
+function drawCanvas() {
+    let newline = true;
+    let lastPoint : Point = {x: 0,y: 0};
+    for(let stroke of displayList) {
+        newline = true;
+        for(let thisPoint of stroke) {
+            if(!newline && ctx) {
+                drawLine(ctx, lastPoint.x, lastPoint.y, thisPoint.x, thisPoint.y);
+            } else {
+                newline = false;
+            }
+            lastPoint = {x: thisPoint.x, y: thisPoint.y};
+        }
+    }
+}
+
+canvas.addEventListener("drawing-changed", (e) => {
+    resetCanvas();
+    drawCanvas();
+});
+
 canvas.addEventListener("mousedown", (e) => {
     penDown = true;
-    mouseX = e.offsetX;
-    mouseY = e.offsetY;
+    displayList.push([]);
+    addDisplayListPoint(e.offsetX, e.offsetY);
 })
 
 canvas.addEventListener("mousemove", (e) => {
     if(penDown) {
-        drawLine(ctx, mouseX, mouseY, e.offsetX, e.offsetY);
-        mouseX = e.offsetX;
-        mouseY = e.offsetY;
+        //drawLine(ctx, mouseX, mouseY, e.offsetX, e.offsetY);
+        addDisplayListPoint(e.offsetX, e.offsetY);
+        canvas.dispatchEvent(drawingChanged);
     }
 })
 
 canvas.addEventListener("mouseup", (e) => {
     if(penDown) {
-        drawLine(ctx, mouseX, mouseY, e.offsetX, e.offsetY);
+        addDisplayListPoint(e.offsetX, e.offsetY);
+        canvas.dispatchEvent(drawingChanged);
         penDown = false;
     }
 })
+
+function resetDisplayInfo() {
+    displayList = [];
+}
 
 app.append(document.createElement("br"));
 
@@ -71,5 +111,6 @@ const clearButton = document.createElement("button");
 clearButton.innerHTML = "Clear"
 
 clearButton.addEventListener("click", resetCanvas)
+clearButton.addEventListener("click", resetDisplayInfo);
 
 app.append(clearButton);
