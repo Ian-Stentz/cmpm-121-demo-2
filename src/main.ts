@@ -5,9 +5,22 @@ interface Point {
     y : number;
 }
 
+enum ToolType {
+    Thin,
+    Thick,
+    Sticker
+}
+
+interface SplineTool {
+    pointData : Point[] | Point;
+    display(ctx : CanvasRenderingContext2D) : void;
+    drag?(x : number, y : number) : void;
+    //tool : ToolType;    
+}
+
 let penDown = false;
-let displayList : Point[][] = [];
-let redoStack : Point[][] = [];
+let displayList : SplineTool[] = [];
+let redoStack : SplineTool[] = [];
 
 const APP_NAME = "Ian's Sticker Sketchpad";
 const app = document.querySelector<HTMLDivElement>("#app")!;
@@ -39,10 +52,11 @@ function resetCanvas() {
 resetCanvas();
 app.append(canvas);
 
+//TODO: STEP 5
 function addDisplayListPoint(x : number, y : number) {
     let l = displayList.length;
     if(l > 0) {
-        let thisPoint : Point = {x,y};
+        let thisPoint : Point = {x: x,y: y};
         displayList[l-1].push(thisPoint);
     }
 }
@@ -59,6 +73,7 @@ function drawLine(context : CanvasRenderingContext2D, x1 : number, y1 : number, 
     }
 }
 
+//TODO: STEP 5
 function drawCanvas() {
     let newline = true;
     let lastPoint : Point = {x: 0,y: 0};
