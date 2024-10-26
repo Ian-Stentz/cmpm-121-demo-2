@@ -52,7 +52,7 @@ function resetCanvas() {
 resetCanvas();
 app.append(canvas);
 
-//TODO: STEP 5
+//TODO: STEP 5 Spline Drag Event
 function addDisplayListPoint(x : number, y : number) {
     let l = displayList.length;
     if(l > 0) {
@@ -73,7 +73,7 @@ function drawLine(context : CanvasRenderingContext2D, x1 : number, y1 : number, 
     }
 }
 
-//TODO: STEP 5
+//TODO: STEP 5 display event
 function drawCanvas() {
     let newline = true;
     let lastPoint : Point = {x: 0,y: 0};
@@ -95,6 +95,7 @@ canvas.addEventListener("drawing-changed", (e) => {
     drawCanvas();
 });
 
+//TODO : STEP 5 Create spline
 canvas.addEventListener("mousedown", (e) => {
     penDown = true;
     displayList.push([]);
