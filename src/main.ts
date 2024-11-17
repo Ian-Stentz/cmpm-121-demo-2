@@ -28,6 +28,8 @@ const header = document.querySelector<HTMLDivElement>("#header")!;
 const app = document.querySelector<HTMLDivElement>("#app")!;
 const footer = document.querySelector<HTMLDivElement>("#footer")!;
 
+const clearToolEvent : Event = new Event("clearSelection");
+
 document.title = APP_NAME;
 header.innerHTML = APP_NAME;
 
@@ -171,13 +173,21 @@ function redo() {
     canvas.dispatchEvent(drawingChanged);
 }
 
+function toolButtonClicked(button : HTMLButtonElement, tool : ToolType) {
+    currentTool = tool;
+    canvas.dispatchEvent(clearToolEvent);
+    button.classList.add("selectedTool");
+}
+
 const thinButton = document.createElement("button");
 thinButton.innerHTML = "Thin";
-thinButton.addEventListener("click", () => {currentTool = ToolType.Thin})
+thinButton.addEventListener("click", () => {toolButtonClicked(thinButton, ToolType.Thin)})
+canvas.addEventListener("clearSelection", () => {thinButton.classList.remove("selectedTool")});
 
 const thickButton = document.createElement("button");
 thickButton.innerHTML = "Thick";
-thickButton.addEventListener("click", () => {currentTool = ToolType.Thick})
+thickButton.addEventListener("click", () => {toolButtonClicked(thickButton, ToolType.Thick)})
+canvas.addEventListener("clearSelection", () => {thickButton.classList.remove("selectedTool")});
 
 header.append(document.createElement("br"));
 header.append(thinButton);
