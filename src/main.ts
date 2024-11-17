@@ -13,21 +13,25 @@ enum ToolType {
 
 interface SplineTool {
     pointData : Point[];
-    display(ctx : CanvasRenderingContext2D, pointData : Point[], tool : ToolType) : void;
+    display(ctx : CanvasRenderingContext2D, pointData : Point[], tool : ToolType, sticker? : string) : void;
     drag?(spline : SplineTool, point : Point) : void;
-    tool : ToolType;    
+    tool : ToolType;
+    sticker? : string;    
 }
 
 interface ToolEquip {
     tool : ToolType;
     draw(ctx : CanvasRenderingContext2D, point : Point) : void;
     point : Point;
+    display(ctx : CanvasRenderingContext2D, pointData : Point[], tool : ToolType, sticker? : string) : void;
+    drag?(spline : SplineTool, point : Point) : void;
+    sticker? : string;
 }
 
 let penDown = false;
 let displayList : SplineTool[] = [];
 let redoStack : SplineTool[] = [];
-let currentTool : ToolEquip = {draw : (ctx, point) => {drawNib(ctx, point, 1)}, tool : ToolType.Thin, point : {x : 0, y : 0}};
+let currentTool : ToolEquip = {draw : (ctx, point) => {drawNib(ctx, point, 1)}, tool : ToolType.Thin, point : {x : 0, y : 0}, display : drawPen, drag : dragSpline};
 
 const APP_NAME = "Ian's Sticker Sketchpad";
 const header = document.querySelector<HTMLDivElement>("#header")!;
@@ -95,7 +99,7 @@ function drawLine(context : CanvasRenderingContext2D, x1 : number, y1 : number, 
 function drawCanvas(context : CanvasRenderingContext2D | null) {
     for(const stroke of displayList) {
         if(context) {
-            stroke.display(context, stroke.pointData, stroke.tool);
+            stroke.display(context, stroke.pointData, stroke.tool, stroke.sticker);
         }
     }
     if(ctx && !penDown) {
@@ -111,6 +115,11 @@ function drawPen(context : CanvasRenderingContext2D, pointData : Point[], tool :
         }
         lastPoint = {x: thisPoint.x, y: thisPoint.y};
     }
+}
+
+function drawSticker(context : CanvasRenderingContext2D, pointData : Point[], _tool : ToolType, sticker : string) {
+    context.font = "16px monospace"
+    context.fillText(sticker, pointData[0].x - 8, pointData[0].y + 8);
 }
 
 function drawCircle(context : CanvasRenderingContext2D, point : Point, radius : number, fill : string | null) {
@@ -131,6 +140,10 @@ function dragSpline(spline : SplineTool, point : Point) {
     spline.pointData.push(point);
 }
 
+function dragSticker(spline : SplineTool, point : Point) {
+    spline.pointData[0] = point;
+}
+
 canvas.addEventListener("drawing-changed", () => {
     resetCanvas();
     drawCanvas(ctx);
@@ -143,7 +156,7 @@ canvas.addEventListener("tool-moved", () => {
 
 canvas.addEventListener("mousedown", (e) => {
     penDown = true;
-    displayList.push({pointData : [], tool : currentTool.tool, display : drawPen, drag : dragSpline});
+    displayList.push({pointData : [], tool : currentTool.tool, display : currentTool.display, drag : currentTool.drag, sticker : currentTool.sticker});
     const curSpline : SplineTool = getCurSpline();
     if(curSpline.drag) {
         curSpline.drag(curSpline, {x : e.offsetX, y : e.offsetY});
@@ -203,17 +216,29 @@ function toolButtonClicked(button : HTMLButtonElement, tool : ToolEquip) {
 
 const thinButton = document.createElement("button");
 thinButton.innerHTML = "Thin";
-thinButton.addEventListener("click", () => {toolButtonClicked(thinButton, {draw : (ctx, point) => {drawNib(ctx, point, thinSize)}, tool : ToolType.Thin, point : currentTool.point})});
+thinButton.addEventListener("click", () => {toolButtonClicked(thinButton, {draw : (ctx, point) => {drawNib(ctx, point, thinSize)}, tool : ToolType.Thin, point : currentTool.point, display : drawPen, drag : dragSpline})});
 canvas.addEventListener("clear-selection", () => {thinButton.classList.remove("selectedTool")});
 
 const thickButton = document.createElement("button");
 thickButton.innerHTML = "Thick";
-thickButton.addEventListener("click", () => {toolButtonClicked(thickButton, {draw : (ctx, point) => {drawNib(ctx, point, thickSize)}, tool : ToolType.Thick, point : currentTool.point})})
+thickButton.addEventListener("click", () => {toolButtonClicked(thickButton, {draw : (ctx, point) => {drawNib(ctx, point, thickSize)}, tool : ToolType.Thick, point : currentTool.point, display : drawPen, drag : dragSpline})})
 canvas.addEventListener("clear-selection", () => {thickButton.classList.remove("selectedTool")});
 
 header.append(document.createElement("br"));
 header.append(thinButton);
 header.append(thickButton);
+
+function createStickerTool(emoji : string) {
+    const newSticker = document.createElement("button");
+    newSticker.innerHTML = emoji;
+    newSticker.addEventListener("click", () => {toolButtonClicked(newSticker, {draw : (ctx, point) => {drawSticker(ctx, [point], ToolType.Sticker, emoji)}, tool : ToolType.Sticker, point : currentTool.point, display : drawSticker, drag : dragSticker, sticker : emoji})})
+    canvas.addEventListener("clear-selection", () => {newSticker.classList.remove("selectedTool")});
+    header.append(newSticker);
+}
+
+createStickerTool("🧱");
+createStickerTool("🌊");
+createStickerTool("☢️");
 
 const clearButton = document.createElement("button");
 clearButton.innerHTML = "Clear";
