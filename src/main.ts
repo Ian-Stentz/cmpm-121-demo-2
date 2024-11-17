@@ -214,12 +214,12 @@ function toolButtonClicked(button : HTMLButtonElement, tool : ToolEquip) {
 }
 
 const thinButton = document.createElement("button");
-thinButton.innerHTML = "Thin";
+thinButton.innerHTML = "Thin 🖊️";
 thinButton.addEventListener("click", () => {toolButtonClicked(thinButton, {draw : (ctx, point) => {drawNib(ctx, point, thinSize)}, tool : ToolType.Thin, point : currentTool.point, display : drawPen, drag : dragSpline})});
 canvas.addEventListener("clear-selection", () => {thinButton.classList.remove("selectedTool")});
 
 const thickButton = document.createElement("button");
-thickButton.innerHTML = "Thick";
+thickButton.innerHTML = "Thick 🖊️";
 thickButton.addEventListener("click", () => {toolButtonClicked(thickButton, {draw : (ctx, point) => {drawNib(ctx, point, thickSize)}, tool : ToolType.Thick, point : currentTool.point, display : drawPen, drag : dragSpline})})
 canvas.addEventListener("clear-selection", () => {thickButton.classList.remove("selectedTool")});
 
@@ -251,9 +251,19 @@ undoButton.innerHTML = "Undo";
 const redoButton = document.createElement("button");
 redoButton.innerHTML = "Redo";
 
+const customStickerButton = document.createElement("button");
+customStickerButton.innerHTML = "Custom Sticker";
+
 undoButton.addEventListener("click", undo);
 redoButton.addEventListener("click", redo);
+customStickerButton.addEventListener("click", () => {
+    const newEmoji = prompt("New Sticker: ", "")
+    if(newEmoji && newEmoji.length < 5) {
+        createStickerTool(newEmoji);
+    }
+})
 
 footer.append(clearButton);
 footer.append(undoButton);
 footer.append(redoButton);
+footer.append(customStickerButton);
