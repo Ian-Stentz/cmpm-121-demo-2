@@ -13,19 +13,20 @@ enum ToolType {
 
 interface SplineTool {
     pointData : Point[];
-    display(ctx : CanvasRenderingContext2D, pointData : Point[], tool : ToolType, sticker? : string) : void;
+    display(ctx : CanvasRenderingContext2D, pointData : Point[], tool : ToolType, additionalInfo? : string) : void;
     drag?(spline : SplineTool, point : Point) : void;
     tool : ToolType;
-    sticker? : string;    
+    //In sticker, acts as the sticker choice, in pen, acts as color
+    additionalInfo? : string;    
 }
 
 interface ToolEquip {
     tool : ToolType;
     draw(ctx : CanvasRenderingContext2D, point : Point) : void;
     point : Point;
-    display(ctx : CanvasRenderingContext2D, pointData : Point[], tool : ToolType, sticker? : string) : void;
+    display(ctx : CanvasRenderingContext2D, pointData : Point[], tool : ToolType, additionalInfo? : string) : void;
     drag?(spline : SplineTool, point : Point) : void;
-    sticker? : string;
+    additionalInfo? : string;
 }
 
 let penDown = false;
@@ -72,10 +73,10 @@ function getCurSpline() : SplineTool{
     return displayList[l-1];
 }
 
-function drawLine(context : CanvasRenderingContext2D, x1 : number, y1 : number, x2 : number, y2 : number, thickness : ToolType) {
+function drawLine(context : CanvasRenderingContext2D, x1 : number, y1 : number, x2 : number, y2 : number, thickness : ToolType, color : string = "black") {
     if(context) {
         context.beginPath();
-        context.strokeStyle = "black";
+        context.strokeStyle = color;
         switch (thickness) {
             case ToolType.Thick:
                 context.lineWidth = thickSize;
@@ -97,7 +98,7 @@ function drawLine(context : CanvasRenderingContext2D, x1 : number, y1 : number, 
 function drawCanvas(context : CanvasRenderingContext2D | null, noTool : boolean = false) {
     for(const stroke of displayList) {
         if(context) {
-            stroke.display(context, stroke.pointData, stroke.tool, stroke.sticker);
+            stroke.display(context, stroke.pointData, stroke.tool, stroke.additionalInfo);
         }
     }
     if(context && !penDown && !noTool) {
@@ -106,11 +107,11 @@ function drawCanvas(context : CanvasRenderingContext2D | null, noTool : boolean 
 }
 
 //color
-function drawPen(context : CanvasRenderingContext2D, pointData : Point[], tool : ToolType) {
+function drawPen(context : CanvasRenderingContext2D, pointData : Point[], tool : ToolType, color : string) {
     let lastPoint : Point | null = null;
     for(const thisPoint of pointData) {
         if(context && lastPoint) {
-            drawLine(context, lastPoint.x, lastPoint.y, thisPoint.x, thisPoint.y, tool);
+            drawLine(context, lastPoint.x, lastPoint.y, thisPoint.x, thisPoint.y, tool, color);
         }
         lastPoint = {x: thisPoint.x, y: thisPoint.y};
     }
@@ -131,8 +132,8 @@ function drawCircle(context : CanvasRenderingContext2D, point : Point, radius : 
     context.closePath();
 }
 
-function drawNib(context : CanvasRenderingContext2D, point : Point, width : number) {
-    drawCircle(context, point, width / 2, "black");
+function drawNib(context : CanvasRenderingContext2D, point : Point, width : number, color : string = "black") {
+    drawCircle(context, point, width / 2, color);
 }
 
 function dragSpline(spline : SplineTool, point : Point) {
@@ -155,7 +156,7 @@ canvas.addEventListener("tool-moved", () => {
 
 canvas.addEventListener("mousedown", (e) => {
     penDown = true;
-    displayList.push({pointData : [], tool : currentTool.tool, display : currentTool.display, drag : currentTool.drag, sticker : currentTool.sticker});
+    displayList.push({pointData : [], tool : currentTool.tool, display : currentTool.display, drag : currentTool.drag, additionalInfo : currentTool.additionalInfo});
     const curSpline : SplineTool = getCurSpline();
     if(curSpline.drag) {
         curSpline.drag(curSpline, {x : e.offsetX, y : e.offsetY});
@@ -212,14 +213,25 @@ function toolButtonClicked(button : HTMLButtonElement, tool : ToolEquip) {
     button.classList.add("selectedTool");
 }
 
+const colors : string[] = ["black", "blue", "green", "purple", "red", "orange", "yellow"]
+function randomColor() : string{
+    const choice = Math.floor(Math.random() * colors.length);
+    console.log(colors[choice]);
+    return colors[choice];
+}
+
 const thinButton = document.createElement("button");
 thinButton.innerHTML = "Thin 🖊️";
-thinButton.addEventListener("click", () => {toolButtonClicked(thinButton, {draw : (ctx, point) => {drawNib(ctx, point, thinSize)}, tool : ToolType.Thin, point : currentTool.point, display : drawPen, drag : dragSpline})});
+thinButton.addEventListener("click", () => {
+    const myColor = randomColor();
+    toolButtonClicked(thinButton, {draw : (ctx, point) => {drawNib(ctx, point, thinSize, myColor)}, tool : ToolType.Thin, point : currentTool.point, display : drawPen, drag : dragSpline, additionalInfo : myColor})});
 canvas.addEventListener("clear-selection", () => {thinButton.classList.remove("selectedTool")});
 
 const thickButton = document.createElement("button");
 thickButton.innerHTML = "Thick 🖊️";
-thickButton.addEventListener("click", () => {toolButtonClicked(thickButton, {draw : (ctx, point) => {drawNib(ctx, point, thickSize)}, tool : ToolType.Thick, point : currentTool.point, display : drawPen, drag : dragSpline})})
+thickButton.addEventListener("click", () => {
+    const myColor = randomColor();
+    toolButtonClicked(thickButton, {draw : (ctx, point) => {drawNib(ctx, point, thickSize, myColor)}, tool : ToolType.Thick, point : currentTool.point, display : drawPen, drag : dragSpline, additionalInfo : myColor})})
 canvas.addEventListener("clear-selection", () => {thickButton.classList.remove("selectedTool")});
 
 header.append(document.createElement("br"));
@@ -229,7 +241,7 @@ header.append(thickButton);
 function createStickerTool(emoji : string) {
     const newSticker = document.createElement("button");
     newSticker.innerHTML = emoji;
-    newSticker.addEventListener("click", () => {toolButtonClicked(newSticker, {draw : (ctx, point) => {drawSticker(ctx, [point], ToolType.Sticker, emoji)}, tool : ToolType.Sticker, point : currentTool.point, display : drawSticker, drag : dragSticker, sticker : emoji})})
+    newSticker.addEventListener("click", () => {toolButtonClicked(newSticker, {draw : (ctx, point) => {drawSticker(ctx, [point], ToolType.Sticker, emoji)}, tool : ToolType.Sticker, point : currentTool.point, display : drawSticker, drag : dragSticker, additionalInfo : emoji})})
     canvas.addEventListener("clear-selection", () => {newSticker.classList.remove("selectedTool")});
     header.append(newSticker);
 }
