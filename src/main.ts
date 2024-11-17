@@ -21,15 +21,17 @@ interface SplineTool {
 let penDown = false;
 let displayList : SplineTool[] = [];
 let redoStack : SplineTool[] = [];
+let currentTool : ToolType = ToolType.Thin;
 
 const APP_NAME = "Ian's Sticker Sketchpad";
+const header = document.querySelector<HTMLDivElement>("#header")!;
 const app = document.querySelector<HTMLDivElement>("#app")!;
+const footer = document.querySelector<HTMLDivElement>("#footer")!;
 
 document.title = APP_NAME;
-app.innerHTML = APP_NAME;
+header.innerHTML = APP_NAME;
 
 //Newline, doesn't need to be saved
-app.append(document.createElement("br"));
 
 const canvas = document.createElement("canvas");
 const ctx = canvas.getContext("2d");
@@ -119,7 +121,7 @@ canvas.addEventListener("drawing-changed", () => {
 //TODO : STEP 5 Create spline
 canvas.addEventListener("mousedown", (e) => {
     penDown = true;
-    displayList.push({pointData : [], tool : ToolType.Thin, display : drawPen, drag : dragSpline});
+    displayList.push({pointData : [], tool : currentTool, display : drawPen, drag : dragSpline});
     const curSpline : SplineTool = getCurSpline();
     if(curSpline.drag) {
         curSpline.drag(curSpline, {x : e.offsetX, y : e.offsetY});
@@ -169,7 +171,17 @@ function redo() {
     canvas.dispatchEvent(drawingChanged);
 }
 
-app.append(document.createElement("br"));
+const thinButton = document.createElement("button");
+thinButton.innerHTML = "Thin";
+thinButton.addEventListener("click", () => {currentTool = ToolType.Thin})
+
+const thickButton = document.createElement("button");
+thickButton.innerHTML = "Thick";
+thickButton.addEventListener("click", () => {currentTool = ToolType.Thick})
+
+header.append(document.createElement("br"));
+header.append(thinButton);
+header.append(thickButton);
 
 const clearButton = document.createElement("button");
 clearButton.innerHTML = "Clear";
@@ -186,6 +198,6 @@ redoButton.innerHTML = "Redo";
 undoButton.addEventListener("click", undo);
 redoButton.addEventListener("click", redo);
 
-app.append(clearButton);
-app.append(undoButton);
-app.append(redoButton);
+footer.append(clearButton);
+footer.append(undoButton);
+footer.append(redoButton);

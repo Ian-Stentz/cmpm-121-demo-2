@@ -41,7 +41,27 @@ canvas {
   filter: drop-shadow(6px 6px 2px #81767e);
 }
 
+#container {
+  margin: 0 auto;
+  padding: 2rem;
+  text-align: center;
+}
+
+#header {
+  max-width: 1280px;
+  margin: 0 auto;
+  padding: 2rem;
+  text-align: center;
+}
+
 #app {
+  max-width: 1280px;
+  margin: 0 auto;
+  padding: 2rem;
+  text-align: center;
+}
+
+#footer {
   max-width: 1280px;
   margin: 0 auto;
   padding: 2rem;
