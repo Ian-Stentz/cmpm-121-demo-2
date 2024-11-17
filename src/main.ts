@@ -18,17 +18,23 @@ interface SplineTool {
     tool : ToolType;    
 }
 
+interface ToolEquip {
+    tool : ToolType;
+    draw(ctx : CanvasRenderingContext2D, point : Point) : void;
+    point : Point;
+}
+
 let penDown = false;
 let displayList : SplineTool[] = [];
 let redoStack : SplineTool[] = [];
-let currentTool : ToolType = ToolType.Thin;
+let currentTool : ToolEquip = {draw : (ctx, point) => {drawNib(ctx, point, 1)}, tool : ToolType.Thin, point : {x : 0, y : 0}};
 
 const APP_NAME = "Ian's Sticker Sketchpad";
 const header = document.querySelector<HTMLDivElement>("#header")!;
 const app = document.querySelector<HTMLDivElement>("#app")!;
 const footer = document.querySelector<HTMLDivElement>("#footer")!;
-
-const clearToolEvent : Event = new Event("clearSelection");
+const thinSize = 2;
+const thickSize = 4;
 
 document.title = APP_NAME;
 header.innerHTML = APP_NAME;
@@ -36,12 +42,15 @@ header.innerHTML = APP_NAME;
 //Newline, doesn't need to be saved
 
 const canvas = document.createElement("canvas");
+canvas.classList.add("nocursor");
 const ctx = canvas.getContext("2d");
 
 canvas.width = 256;
 canvas.height = 256;
 
 const drawingChanged = new Event("drawing-changed");
+const toolMoved = new Event("tool-moved");
+const clearToolEvent = new Event("clear-selection");
 
 function resetCanvas() {
     //if(ctx) to avoid a style error since ctx can be null type
@@ -56,15 +65,6 @@ function resetCanvas() {
 resetCanvas();
 app.append(canvas);
 
-//TODO: STEP 5 Spline Drag Event
-// function addDisplayListPoint(x : number, y : number) {
-//     const l = displayList.length;
-//     if(l > 0) {
-//         const thisPoint : Point = {x: x,y: y};
-//         displayList[l-1].pointData.push(thisPoint);
-//     }
-// }
-
 function getCurSpline() : SplineTool{
     const l = displayList.length;
     return displayList[l-1];
@@ -76,10 +76,10 @@ function drawLine(context : CanvasRenderingContext2D, x1 : number, y1 : number, 
         context.strokeStyle = "black";
         switch (thickness) {
             case ToolType.Thick:
-                context.lineWidth = 3;
+                context.lineWidth = thickSize;
                 break;
             case ToolType.Thin:
-                context.lineWidth = 1;
+                context.lineWidth = thinSize;
                 break;
             default:
                 context.lineWidth = 2;
@@ -92,12 +92,14 @@ function drawLine(context : CanvasRenderingContext2D, x1 : number, y1 : number, 
     }
 }
 
-//TODO: STEP 5 display event
 function drawCanvas(context : CanvasRenderingContext2D | null) {
     for(const stroke of displayList) {
         if(context) {
             stroke.display(context, stroke.pointData, stroke.tool);
         }
+    }
+    if(ctx && !penDown) {
+        currentTool.draw(ctx, currentTool.point);
     }
 }
 
@@ -111,6 +113,20 @@ function drawPen(context : CanvasRenderingContext2D, pointData : Point[], tool :
     }
 }
 
+function drawCircle(context : CanvasRenderingContext2D, point : Point, radius : number, fill : string | null) {
+    context.beginPath();
+    context.arc(point.x, point.y, radius, 0, 2 * Math.PI);
+    if(fill) {
+        context.fillStyle = fill;
+        context.fill();
+    }
+    context.closePath();
+}
+
+function drawNib(context : CanvasRenderingContext2D, point : Point, width : number) {
+    drawCircle(context, point, width / 2, "black");
+}
+
 function dragSpline(spline : SplineTool, point : Point) {
     spline.pointData.push(point);
 }
@@ -120,10 +136,14 @@ canvas.addEventListener("drawing-changed", () => {
     drawCanvas(ctx);
 });
 
-//TODO : STEP 5 Create spline
+canvas.addEventListener("tool-moved", () => {
+    resetCanvas();
+    drawCanvas(ctx);
+});
+
 canvas.addEventListener("mousedown", (e) => {
     penDown = true;
-    displayList.push({pointData : [], tool : currentTool, display : drawPen, drag : dragSpline});
+    displayList.push({pointData : [], tool : currentTool.tool, display : drawPen, drag : dragSpline});
     const curSpline : SplineTool = getCurSpline();
     if(curSpline.drag) {
         curSpline.drag(curSpline, {x : e.offsetX, y : e.offsetY});
@@ -131,6 +151,8 @@ canvas.addEventListener("mousedown", (e) => {
 })
 
 canvas.addEventListener("mousemove", (e) => {
+    currentTool.point = {x : e.offsetX, y : e.offsetY};
+    canvas.dispatchEvent(toolMoved);
     if(penDown) {
         //drawLine(ctx, mouseX, mouseY, e.offsetX, e.offsetY);
         const curSpline : SplineTool = getCurSpline();
@@ -173,7 +195,7 @@ function redo() {
     canvas.dispatchEvent(drawingChanged);
 }
 
-function toolButtonClicked(button : HTMLButtonElement, tool : ToolType) {
+function toolButtonClicked(button : HTMLButtonElement, tool : ToolEquip) {
     currentTool = tool;
     canvas.dispatchEvent(clearToolEvent);
     button.classList.add("selectedTool");
@@ -181,13 +203,13 @@ function toolButtonClicked(button : HTMLButtonElement, tool : ToolType) {
 
 const thinButton = document.createElement("button");
 thinButton.innerHTML = "Thin";
-thinButton.addEventListener("click", () => {toolButtonClicked(thinButton, ToolType.Thin)})
-canvas.addEventListener("clearSelection", () => {thinButton.classList.remove("selectedTool")});
+thinButton.addEventListener("click", () => {toolButtonClicked(thinButton, {draw : (ctx, point) => {drawNib(ctx, point, thinSize)}, tool : ToolType.Thin, point : currentTool.point})});
+canvas.addEventListener("clear-selection", () => {thinButton.classList.remove("selectedTool")});
 
 const thickButton = document.createElement("button");
 thickButton.innerHTML = "Thick";
-thickButton.addEventListener("click", () => {toolButtonClicked(thickButton, ToolType.Thick)})
-canvas.addEventListener("clearSelection", () => {thickButton.classList.remove("selectedTool")});
+thickButton.addEventListener("click", () => {toolButtonClicked(thickButton, {draw : (ctx, point) => {drawNib(ctx, point, thickSize)}, tool : ToolType.Thick, point : currentTool.point})})
+canvas.addEventListener("clear-selection", () => {thickButton.classList.remove("selectedTool")});
 
 header.append(document.createElement("br"));
 header.append(thinButton);
