@@ -167,7 +167,6 @@ canvas.addEventListener("mousemove", (e) => {
     currentTool.point = {x : e.offsetX, y : e.offsetY};
     canvas.dispatchEvent(toolMoved);
     if(penDown) {
-        //drawLine(ctx, mouseX, mouseY, e.offsetX, e.offsetY);
         const curSpline : SplineTool = getCurSpline();
         if(curSpline.drag) {
             curSpline.drag(curSpline, {x : e.offsetX, y : e.offsetY});
