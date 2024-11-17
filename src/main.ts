@@ -105,6 +105,7 @@ function drawCanvas(context : CanvasRenderingContext2D | null, noTool : boolean 
     }
 }
 
+//color
 function drawPen(context : CanvasRenderingContext2D, pointData : Point[], tool : ToolType) {
     let lastPoint : Point | null = null;
     for(const thisPoint of pointData) {
