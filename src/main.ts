@@ -43,8 +43,6 @@ const thickSize = 4;
 document.title = APP_NAME;
 header.innerHTML = APP_NAME;
 
-//Newline, doesn't need to be saved
-
 const canvas = document.createElement("canvas");
 canvas.classList.add("nocursor");
 const ctx = canvas.getContext("2d");
@@ -56,17 +54,17 @@ const drawingChanged = new Event("drawing-changed");
 const toolMoved = new Event("tool-moved");
 const clearToolEvent = new Event("clear-selection");
 
-function resetCanvas() {
+function resetCanvas(context : CanvasRenderingContext2D | null) {
     //if(ctx) to avoid a style error since ctx can be null type
-    if(ctx) {
-        ctx.clearRect(0,0,canvas.width,canvas.height)
+    if(context) {
+        context.clearRect(0,0,canvas.width,canvas.height)
         //white rect is necessary to hide dropdown shadow showing through
-        ctx.fillStyle = "white";
-        ctx.fillRect(0,0,canvas.width,canvas.height);
+        context.fillStyle = "white";
+        context.fillRect(0,0,canvas.width,canvas.height);
     }
 }
 
-resetCanvas();
+resetCanvas(ctx);
 app.append(canvas);
 
 function getCurSpline() : SplineTool{
@@ -96,14 +94,14 @@ function drawLine(context : CanvasRenderingContext2D, x1 : number, y1 : number, 
     }
 }
 
-function drawCanvas(context : CanvasRenderingContext2D | null) {
+function drawCanvas(context : CanvasRenderingContext2D | null, noTool : boolean = false) {
     for(const stroke of displayList) {
         if(context) {
             stroke.display(context, stroke.pointData, stroke.tool, stroke.sticker);
         }
     }
-    if(ctx && !penDown) {
-        currentTool.draw(ctx, currentTool.point);
+    if(context && !penDown && !noTool) {
+        currentTool.draw(context, currentTool.point);
     }
 }
 
@@ -145,12 +143,12 @@ function dragSticker(spline : SplineTool, point : Point) {
 }
 
 canvas.addEventListener("drawing-changed", () => {
-    resetCanvas();
+    resetCanvas(ctx);
     drawCanvas(ctx);
 });
 
 canvas.addEventListener("tool-moved", () => {
-    resetCanvas();
+    resetCanvas(ctx);
     drawCanvas(ctx);
 });
 
@@ -242,7 +240,7 @@ createStickerTool("☢️");
 const clearButton = document.createElement("button");
 clearButton.innerHTML = "Clear";
 
-clearButton.addEventListener("click", resetCanvas);
+clearButton.addEventListener("click", () => (resetCanvas(ctx)));
 clearButton.addEventListener("click", resetDisplayInfo);
 
 const undoButton = document.createElement("button");
@@ -267,3 +265,35 @@ footer.append(clearButton);
 footer.append(undoButton);
 footer.append(redoButton);
 footer.append(customStickerButton);
+
+function prepareOutCanvas(background : boolean = false) : HTMLCanvasElement{
+    const thisCanvas = document.createElement("canvas");
+    const thisctx = thisCanvas.getContext("2d");
+    thisCanvas.width = 1024;
+    thisCanvas.height = 1024;
+    if(thisctx) {
+        thisctx.scale(4,4);
+        if(background) {
+            thisctx.fillStyle = "white";
+            thisctx.fillRect(0,0,canvas.width,canvas.height);
+        }
+        drawCanvas(thisctx, true);
+    }
+    console.log("BEEP");
+    return thisCanvas;
+}
+
+const anchor = document.createElement("a");
+anchor.addEventListener("click", () => {
+    const selection : string | null = prompt("W for white background, T for transparent");
+    if(selection && selection.toLowerCase() == "w") {
+        anchor.href = anchor.href = prepareOutCanvas(true).toDataURL("image/png");
+    } else {
+        anchor.href = anchor.href = prepareOutCanvas(false).toDataURL("image/png");
+    }
+})
+anchor.download = "sketchpad.png";
+anchor.innerHTML = "Download Sketch"
+//anchor.click();
+footer.append(document.createElement("br"));
+footer.append(anchor);
