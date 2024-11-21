@@ -33,6 +33,7 @@ let penDown = false;
 let displayList : SplineTool[] = [];
 let redoStack : SplineTool[] = [];
 let currentTool : ToolEquip = {draw : (ctx, point) => {drawNib(ctx, point, 1)}, tool : ToolType.Thin, point : {x : 0, y : 0}, display : drawPen, drag : dragSpline};
+let colorPen : boolean = false;
 
 const APP_NAME = "Ian's Sticker Sketchpad";
 const header = document.querySelector<HTMLDivElement>("#header")!;
@@ -54,6 +55,7 @@ canvas.height = 256;
 const drawingChanged = new Event("drawing-changed");
 const toolMoved = new Event("tool-moved");
 const clearToolEvent = new Event("clear-selection");
+const colorChangeEvent = new Event("color-update");
 
 function resetCanvas(context : CanvasRenderingContext2D | null) {
     //if(ctx) to avoid a style error since ctx can be null type
@@ -67,6 +69,7 @@ function resetCanvas(context : CanvasRenderingContext2D | null) {
 
 resetCanvas(ctx);
 app.append(canvas);
+canvas.dispatchEvent(colorChangeEvent);
 
 function getCurSpline() : SplineTool{
     const l = displayList.length;
@@ -210,31 +213,75 @@ function redo() {
 function toolButtonClicked(button : HTMLButtonElement, tool : ToolEquip) {
     currentTool = tool;
     canvas.dispatchEvent(clearToolEvent);
+    canvas.dispatchEvent(colorChangeEvent);
     button.classList.add("selectedTool");
 }
 
-const colors : string[] = ["black", "blue", "green", "purple", "red", "orange", "yellow"]
-function randomColor() : string{
-    const choice = Math.floor(Math.random() * colors.length);
-    console.log(colors[choice]);
-    return colors[choice];
+//Toggles between black and color pen
+function colorToggle(button: HTMLButtonElement){
+    if(colorPen){
+        colorPen = false;
+        button.classList.remove("selectedTool");
+    }
+    else{
+        colorPen = true;
+        button.classList.add("selectedTool");
+    }
+    canvas.dispatchEvent(colorChangeEvent)
 }
+
+
+
+
+//Hue slider Implementation
+const hText = document.createElement("text");
+hText.innerHTML = "Hue:";
+app.append(hText);
+
+const hueSlider = document.createElement("input");
+hueSlider.type = "range";
+hueSlider.min = "0";
+hueSlider.max = "360";
+hueSlider.defaultValue = "0";
+
+//Updates color whenever slider is moved
+hueSlider.addEventListener("change", function() {
+    canvas.dispatchEvent(colorChangeEvent);
+}, false);
+
+//Updates the color of the pen and pen preview
+canvas.addEventListener("color-update", () => {if(currentTool.tool != ToolType.Sticker){
+    let myColor = "black";
+    if(colorPen){
+        myColor = "HSL(" + hueSlider.value + ", 100%, 50%";
+    }
+
+    currentTool.additionalInfo = myColor;
+    currentTool.draw = (ctx, point) => {drawNib(ctx, point, thickSize, myColor)}
+}});
+
+const colorButton = document.createElement("button");
+colorButton.innerHTML = "Color 🖊️";
+colorButton.addEventListener("click", () => {colorToggle(colorButton)});
 
 const thinButton = document.createElement("button");
 thinButton.innerHTML = "Thin 🖊️";
 thinButton.addEventListener("click", () => {
-    const myColor = randomColor();
-    toolButtonClicked(thinButton, {draw : (ctx, point) => {drawNib(ctx, point, thinSize, myColor)}, tool : ToolType.Thin, point : currentTool.point, display : drawPen, drag : dragSpline, additionalInfo : myColor})});
+    const myColor = "black";
+    toolButtonClicked(thinButton, {draw : (ctx, point) => {drawNib(ctx, point, thinSize, myColor)}, tool : ToolType.Thin, point : currentTool.point, display : drawPen, drag : dragSpline, additionalInfo :  myColor})});
 canvas.addEventListener("clear-selection", () => {thinButton.classList.remove("selectedTool")});
 
 const thickButton = document.createElement("button");
 thickButton.innerHTML = "Thick 🖊️";
 thickButton.addEventListener("click", () => {
-    const myColor = randomColor();
+    const myColor = "black";
     toolButtonClicked(thickButton, {draw : (ctx, point) => {drawNib(ctx, point, thickSize, myColor)}, tool : ToolType.Thick, point : currentTool.point, display : drawPen, drag : dragSpline, additionalInfo : myColor})})
 canvas.addEventListener("clear-selection", () => {thickButton.classList.remove("selectedTool")});
 
 header.append(document.createElement("br"));
+header.append(hText);
+header.append(hueSlider);
+header.append(colorButton);
 header.append(thinButton);
 header.append(thickButton);
 
