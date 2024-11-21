@@ -11,15 +11,16 @@ enum ToolType {
     Sticker
 }
 
+// Interface representing a tool that can handle drawing or display on the canvas
 interface SplineTool {
     pointData : Point[];
     display(ctx : CanvasRenderingContext2D, pointData : Point[], tool : ToolType, additionalInfo? : string) : void;
     drag?(spline : SplineTool, point : Point) : void;
     tool : ToolType;
-    //In sticker, acts as the sticker choice, in pen, acts as color
-    additionalInfo? : string;    
+    additionalInfo? : string;   // Additional info for the tool (e.g., color for pens or emoji for stickers)
 }
 
+// Interface for tools that can be equipped and used on the canvas
 interface ToolEquip {
     tool : ToolType;
     draw(ctx : CanvasRenderingContext2D, point : Point) : void;
@@ -29,12 +30,14 @@ interface ToolEquip {
     additionalInfo? : string;
 }
 
+// Global state variables
 let penDown = false;
 let displayList : SplineTool[] = [];
 let redoStack : SplineTool[] = [];
 let currentTool : ToolEquip = {draw : (ctx, point) => {drawNib(ctx, point, 1)}, tool : ToolType.Thin, point : {x : 0, y : 0}, display : drawPen, drag : dragSpline};
 let colorPen : boolean = false;
 
+// Constants
 const APP_NAME = "Ian's Sticker Sketchpad";
 const header = document.querySelector<HTMLDivElement>("#header")!;
 const app = document.querySelector<HTMLDivElement>("#app")!;
@@ -42,9 +45,11 @@ const footer = document.querySelector<HTMLDivElement>("#footer")!;
 const thinSize = 2;
 const thickSize = 4;
 
+// Set app title
 document.title = APP_NAME;
 header.innerHTML = APP_NAME;
 
+// Create and set up canvas
 const canvas = document.createElement("canvas");
 canvas.classList.add("nocursor");
 const ctx = canvas.getContext("2d");
@@ -52,30 +57,33 @@ const ctx = canvas.getContext("2d");
 canvas.width = 256;
 canvas.height = 256;
 
+// Events for handling tool and canvas state changes
 const drawingChanged = new Event("drawing-changed");
 const toolMoved = new Event("tool-moved");
 const clearToolEvent = new Event("clear-selection");
 const colorChangeEvent = new Event("color-update");
 
+// Reset canvas to its initial state (clear and fill with white)
 function resetCanvas(context : CanvasRenderingContext2D | null) {
-    //if(ctx) to avoid a style error since ctx can be null type
     if(context) {
         context.clearRect(0,0,canvas.width,canvas.height)
-        //white rect is necessary to hide dropdown shadow showing through
         context.fillStyle = "white";
         context.fillRect(0,0,canvas.width,canvas.height);
     }
 }
 
+// Initialize canvas
 resetCanvas(ctx);
 app.append(canvas);
 canvas.dispatchEvent(colorChangeEvent);
 
+// Helper function to get the current active spline tool (last item in the displayList)
 function getCurSpline() : SplineTool{
     const l = displayList.length;
     return displayList[l-1];
 }
 
+// Draw a line between two points with a specific thickness and color
 function drawLine(context : CanvasRenderingContext2D, x1 : number, y1 : number, x2 : number, y2 : number, thickness : ToolType, color : string = "black") {
     if(context) {
         context.beginPath();
@@ -97,6 +105,7 @@ function drawLine(context : CanvasRenderingContext2D, x1 : number, y1 : number, 
     }
 }
 
+// Draw all splines in displayList on the canvas
 function drawCanvas(context : CanvasRenderingContext2D | null, noTool : boolean = false) {
     for(const stroke of displayList) {
         if(context) {
@@ -108,7 +117,7 @@ function drawCanvas(context : CanvasRenderingContext2D | null, noTool : boolean 
     }
 }
 
-//color
+// Drawing behavior for the pen tool (color)
 function drawPen(context : CanvasRenderingContext2D, pointData : Point[], tool : ToolType, color : string) {
     let lastPoint : Point | null = null;
     for(const thisPoint of pointData) {
@@ -119,11 +128,13 @@ function drawPen(context : CanvasRenderingContext2D, pointData : Point[], tool :
     }
 }
 
+// Drawing behavior for the sticker tool (draws text on canvas)
 function drawSticker(context : CanvasRenderingContext2D, pointData : Point[], _tool : ToolType, sticker : string) {
     context.font = "16px monospace"
     context.fillText(sticker, pointData[0].x - 8, pointData[0].y + 8);
 }
 
+// Draw a circle (used for drawing nibs or tool effects)
 function drawCircle(context : CanvasRenderingContext2D, point : Point, radius : number, fill : string | null) {
     context.beginPath();
     context.arc(point.x, point.y, radius, 0, 2 * Math.PI);
@@ -134,18 +145,22 @@ function drawCircle(context : CanvasRenderingContext2D, point : Point, radius : 
     context.closePath();
 }
 
+// Draw a small nib (circle) at the tool's point
 function drawNib(context : CanvasRenderingContext2D, point : Point, width : number, color : string = "black") {
     drawCircle(context, point, width / 2, color);
 }
 
+// Drag behavior for the pen tool (adds new points to the spline)
 function dragSpline(spline : SplineTool, point : Point) {
     spline.pointData.push(point);
 }
 
+// Drag behavior for the sticker tool (moves the sticker's position)
 function dragSticker(spline : SplineTool, point : Point) {
     spline.pointData[0] = point;
 }
 
+// Canvas event listeners for user interactions
 canvas.addEventListener("drawing-changed", () => {
     resetCanvas(ctx);
     drawCanvas(ctx);
@@ -156,6 +171,7 @@ canvas.addEventListener("tool-moved", () => {
     drawCanvas(ctx);
 });
 
+// Mouse event listeners for drawing actions
 canvas.addEventListener("mousedown", (e) => {
     penDown = true;
     displayList.push({pointData : [], tool : currentTool.tool, display : currentTool.display, drag : currentTool.drag, additionalInfo : currentTool.additionalInfo});
@@ -188,7 +204,8 @@ canvas.addEventListener("mouseup", (e) => {
     }
 })
 
-function resetDisplayInfo() {
+// Functions to handle clear, redo, and undo
+function clearDrawingHistory() {
     displayList = [];
     redoStack = [];
 }
@@ -209,6 +226,7 @@ function redo() {
     canvas.dispatchEvent(drawingChanged);
 }
 
+// Equips tool and updates canvas based on button clicked
 function toolButtonClicked(button : HTMLButtonElement, tool : ToolEquip) {
     currentTool = tool;
     canvas.dispatchEvent(clearToolEvent);
@@ -229,10 +247,7 @@ function colorToggle(button: HTMLButtonElement){
     canvas.dispatchEvent(colorChangeEvent)
 }
 
-
-
-
-//Hue slider Implementation
+//Hue slider implementation
 const hText = document.createElement("text");
 hText.innerHTML = "Hue:";
 app.append(hText);
@@ -259,6 +274,7 @@ canvas.addEventListener("color-update", () => {if(currentTool.tool != ToolType.S
     currentTool.draw = (ctx, point) => {drawNib(ctx, point, thickSize, myColor)}
 }});
 
+// Create buttons for color and thickness
 const colorButton = document.createElement("button");
 colorButton.innerHTML = "Color 🖊️";
 colorButton.addEventListener("click", () => {colorToggle(colorButton)});
@@ -284,6 +300,7 @@ header.append(colorButton);
 header.append(thinButton);
 header.append(thickButton);
 
+//Create stickers
 function createStickerTool(emoji : string) {
     const newSticker = document.createElement("button");
     newSticker.innerHTML = emoji;
@@ -296,11 +313,12 @@ createStickerTool("🧱");
 createStickerTool("🌊");
 createStickerTool("☢️");
 
+// Create button for clear, undo, and redo
 const clearButton = document.createElement("button");
 clearButton.innerHTML = "Clear";
 
 clearButton.addEventListener("click", () => (resetCanvas(ctx)));
-clearButton.addEventListener("click", resetDisplayInfo);
+clearButton.addEventListener("click", clearDrawingHistory);
 
 const undoButton = document.createElement("button");
 undoButton.innerHTML = "Undo";
@@ -325,7 +343,8 @@ footer.append(undoButton);
 footer.append(redoButton);
 footer.append(customStickerButton);
 
-function prepareOutCanvas(background : boolean = false) : HTMLCanvasElement{
+// Canvas export logic for download
+function prepareCanvasForExport(background : boolean = false) : HTMLCanvasElement{
     const thisCanvas = document.createElement("canvas");
     const thisctx = thisCanvas.getContext("2d");
     thisCanvas.width = 1024;
@@ -346,13 +365,14 @@ const anchor = document.createElement("a");
 anchor.addEventListener("click", () => {
     const selection : string | null = prompt("W for white background, T for transparent");
     if(selection && selection.toLowerCase() == "w") {
-        anchor.href = anchor.href = prepareOutCanvas(true).toDataURL("image/png");
+        anchor.href = anchor.href = prepareCanvasForExport(true).toDataURL("image/png");
     } else {
-        anchor.href = anchor.href = prepareOutCanvas(false).toDataURL("image/png");
+        anchor.href = anchor.href = prepareCanvasForExport(false).toDataURL("image/png");
     }
 })
 anchor.download = "sketchpad.png";
 anchor.innerHTML = "Download Sketch"
+
 //anchor.click();
 footer.append(document.createElement("br"));
 footer.append(anchor);
